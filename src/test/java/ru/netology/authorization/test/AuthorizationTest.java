@@ -1,22 +1,21 @@
 package ru.netology.authorization.test;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
-
-import ru.netology.authorization.data.DataHelper;
+import java.util.List;
 
 import static com.codeborne.selenide.Selenide.open;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.netology.authorization.data.DataHelper.*;
-import static ru.netology.authorization.data.SQLHelper.cleanAuthCodes;
-import static ru.netology.authorization.data.SQLHelper.cleanDB;
+import static ru.netology.authorization.data.SQLHelper.*;
 
 
 public class AuthorizationTest {
+    int firstCardBalanceBeforeTransaction;
+    int secondCardBalanceBeforeTransaction;
+    List<CardsInfo> cardsNumbers;
+    String token;
 
     @AfterAll
     static void cleanAll() {
@@ -31,36 +30,43 @@ public class AuthorizationTest {
     @BeforeEach
     void start() {
         open("http://localhost:9999");
+        getRegisteredUser();
+        token = getVerificationCode();
+        cardsNumbers = getCardNumbers();
+        firstCardBalanceBeforeTransaction = cardsNumbers.get(1).getBalance_in_kopecks() / 100;
+        secondCardBalanceBeforeTransaction = cardsNumbers.get(0).getBalance_in_kopecks() / 100;
     }
 
     @Test
-    void shouldSuccefullyAuthorized(){
-        getRegisteredUser();
+    @DisplayName("Test1")
+    void shouldNotTransferHugeAmountOfMoney() {
+        int amountForTransfer = 15000;
+        var cardsInfoAfterTransaction = makeTrasferMoney(createTransReqFrom1to2Card(cardsNumbers, amountForTransfer), token);
+        int firstCardBalanceAfterTransaction = cardsInfoAfterTransaction[1].getBalance();
+        int secondCardBalanceAfterTransaction = cardsInfoAfterTransaction[0].getBalance();
+        assertAll(() -> assertEquals(firstCardBalanceBeforeTransaction - amountForTransfer, firstCardBalanceAfterTransaction),
+                () -> assertEquals(secondCardBalanceBeforeTransaction + amountForTransfer, secondCardBalanceAfterTransaction));
+    }
+
+    @Test
+    @DisplayName("Test2")
+    void shouldSuccefullyTransferMoneyFrom1to2Card() {
         int amountForTransfer = 4000;
-        var token = getVerificationCode();
-        var cards = getCardsInfo(token);
-        int firstCardBalanceBeforeTransaction = cards[1].getBalance();
-        int secondCardBalanceBeforeTransaction = cards[0].getBalance();
-        var cardsInfoAfterTransaction = makeTrasferMoney(createTransReqFrom1to2Card(cards, amountForTransfer), token);
+        var cardsInfoAfterTransaction = makeTrasferMoney(createTransReqFrom2to1Card(cardsNumbers, amountForTransfer), token);
         int firstCardBalanceAfterTransaction = cardsInfoAfterTransaction[1].getBalance();
         int secondCardBalanceAfterTransaction = cardsInfoAfterTransaction[0].getBalance();
         assertAll(() -> assertEquals(firstCardBalanceBeforeTransaction + amountForTransfer, firstCardBalanceAfterTransaction),
                 () -> assertEquals(secondCardBalanceBeforeTransaction - amountForTransfer, secondCardBalanceAfterTransaction));
-
     }
 
-//    @Test
-//    void shouldNotAuthorizedWithInvalidUser(){
-//        loginPage.login(getRandomUser());
-//        loginPage.checkErrorMessage("Ошибка! \nНеверно указан логин или пароль");
-//    }
-//
-//    @Test
-//    void shouldNotAuthorizedWithInvalidVerificationCode() {
-//        var verificationPage = loginPage.validLogin(authInfo);
-//        verificationPage.verify(generateVerificationCode().getVerificationCode());
-//        verificationPage.checkErrorMessage("Ошибка! \nНеверно указан код! Попробуйте ещё раз.");
-//    }
-
-
+    @Test
+    @DisplayName("Test3")
+    void shouldТNotransferMoneyFromNegativeBalanceto() {
+        int amountForTransfer = 3000;
+        var cardsInfoAfterTransaction = makeTrasferMoney(createTransReqFrom1to2Card(cardsNumbers, amountForTransfer), token);
+        int firstCardBalanceAfterTransaction = cardsInfoAfterTransaction[1].getBalance();
+        int secondCardBalanceAfterTransaction = cardsInfoAfterTransaction[0].getBalance();
+        assertAll(() -> assertEquals(firstCardBalanceBeforeTransaction - amountForTransfer, firstCardBalanceAfterTransaction),
+                () -> assertEquals(secondCardBalanceBeforeTransaction + amountForTransfer, secondCardBalanceAfterTransaction));
+    }
 }

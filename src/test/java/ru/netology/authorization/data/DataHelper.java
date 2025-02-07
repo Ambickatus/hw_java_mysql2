@@ -1,64 +1,19 @@
 package ru.netology.authorization.data;
 
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.filter.log.LogDetail;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.Value;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import java.util.List;
+
+import static ru.netology.authorization.data.ApiHelper.*;
 
 public class DataHelper {
-    private static final RequestSpecification requestSpec = new RequestSpecBuilder()
-            .setBaseUri("http://localhost")
-            .setPort(9999)
-            .setAccept(ContentType.JSON)
-            .setContentType(ContentType.JSON)
-            .log(LogDetail.ALL)
-            .build();
+
 
     private DataHelper() {
     }
-
-    private static void sendRequesttoAuth(AuthInfo user) {
-        given()
-                .spec(requestSpec)
-                .body(user)
-                .when().log().all()
-                .post("/api/auth")
-                .then().log().all()
-                .statusCode(200);
-
-    }
-
-    private static String sendRequesttoVerify(VerifyInfo user) {
-        String token = given()
-                .spec(requestSpec)
-                .body(user)
-                .when().log().all()
-                .post("/api/auth/verification")
-                .then().log().all()
-                .statusCode(200)
-                .extract()
-                .path("token");
-        assertThat(token, equalTo("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbiI6InZhc3lhIn0.JmhHh8NXwfqktXSFbzkPohUb90gnc3yZ9tiXa0uUpRY"));
-        return token;
-    }
-
-    private static void sendRequestForTransaction(TransferInfo transReq, String token) {
-        given()
-                .spec(requestSpec)
-                .auth().oauth2(token)
-                .body(transReq)
-                .when().log().all()
-                .post("api/transfer")
-                .then().log().all()
-                .statusCode(200);
-    }
-
 
     @Value
     public static class AuthInfo {
@@ -78,6 +33,7 @@ public class DataHelper {
         String number;
         int balance;
     }
+
     @Value
     public static class TransferInfo {
         String from;
@@ -85,19 +41,14 @@ public class DataHelper {
         int amount;
     }
 
-    public static DataHelper.CardResponseInfo[] checkCards(String token) {
-        DataHelper.CardResponseInfo[] cards =
-                given()
-                        .spec(requestSpec)
-                        .auth().oauth2(token)
-                        .when()
-                        .get("api/cards")
-                        .then().log().all()
-                        .statusCode(200)
-                        .extract()
-                        .response()
-                        .as(DataHelper.CardResponseInfo[].class);
-        return cards;
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CardsInfo {
+        String id;
+        String user_id;
+        String number;
+        int balance_in_kopecks;
     }
 
 
@@ -106,41 +57,36 @@ public class DataHelper {
     }
 
 
-
     public static AuthInfo getRegisteredUser() {
         var registeredUser = getExsistingUser();
-        sendRequesttoAuth(registeredUser);
+        ApiHelper.sendRequesttoAuth(registeredUser);
         return registeredUser;
     }
 
     public static String getVerificationCode() {
-        var verifiedUser = new VerifyInfo("vasya", SQLHelper.getVerificationCode());
+        var verifiedUser = new VerifyInfo("vasya", SQLHelper.getVerificCode());
         return sendRequesttoVerify(verifiedUser);
     }
 
-    public static CardResponseInfo[] getCardsInfo(String token) {
-        return checkCards(token);
-    }
 
-    public static TransferInfo createTransReqFrom1to2Card(CardResponseInfo[] cards, int amount) {
-        String cardFromTransfer = cards[1].getNumber();
-        String cardToTransfer = cards[0].getNumber();
+    public static TransferInfo createTransReqFrom1to2Card(List<CardsInfo> cardsInfo, int amount) {
+        String cardFromTransfer = cardsInfo.get(1).number;
+        String cardToTransfer = cardsInfo.get(0).number;
         return new TransferInfo(cardFromTransfer, cardToTransfer, amount);
 
     }
 
-    public static TransferInfo createTransReqFrom2to1Card(CardResponseInfo[] cards, int amount) {
-        String cardFromTransfer = cards[0].getNumber();
-        String cardToTransfer = cards[1].getNumber();
+    public static TransferInfo createTransReqFrom2to1Card(List<CardsInfo> cardsInfo, int amount) {
+        String cardFromTransfer = cardsInfo.get(0).number;
+        String cardToTransfer = cardsInfo.get(1).number;
         return new TransferInfo(cardFromTransfer, cardToTransfer, amount);
 
     }
 
-    public static CardResponseInfo[] makeTrasferMoney(TransferInfo transReq, String token){
+    public static CardResponseInfo[] makeTrasferMoney(TransferInfo transReq, String token) {
         sendRequestForTransaction(transReq, token);
         return checkCards(token);
     }
 }
 
-//SQLHelper.getVerificationCode()
 

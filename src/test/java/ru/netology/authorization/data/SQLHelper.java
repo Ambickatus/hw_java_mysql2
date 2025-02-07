@@ -2,10 +2,12 @@ package ru.netology.authorization.data;
 
 import lombok.SneakyThrows;
 import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.List;
 
 public class SQLHelper {
     private static final QueryRunner QUERY_RUNNER = new QueryRunner();
@@ -20,10 +22,20 @@ public class SQLHelper {
     }
 
     @SneakyThrows
-    public static String getVerificationCode() {
+    public static String getVerificCode() {
         var verificCodeStringSQL = "SELECT code FROM auth_codes ORDER BY created DESC LIMIT 1";
         try (var connect = getConnect()) {
             return QUERY_RUNNER.query(connect, verificCodeStringSQL, new ScalarHandler<>());
+        }
+    }
+
+    @SneakyThrows
+    public static List<DataHelper.CardsInfo> getCardNumbers() {
+        var cardNumbersList = "SELECT * FROM cards;";
+        try (var connect = getConnect()) {
+            List<DataHelper.CardsInfo> allNumbers = QUERY_RUNNER.query(connect, cardNumbersList, new BeanListHandler<>(DataHelper.CardsInfo.class));
+            System.out.println(allNumbers);
+            return allNumbers;
         }
     }
 
