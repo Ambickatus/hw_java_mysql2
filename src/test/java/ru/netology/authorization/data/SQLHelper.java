@@ -34,7 +34,6 @@ public class SQLHelper {
         var cardNumbersList = "SELECT * FROM cards;";
         try (var connect = getConnect()) {
             List<DataHelper.CardsInfo> allNumbers = QUERY_RUNNER.query(connect, cardNumbersList, new BeanListHandler<>(DataHelper.CardsInfo.class));
-            System.out.println(allNumbers);
             return allNumbers;
         }
     }
