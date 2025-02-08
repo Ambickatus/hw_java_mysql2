@@ -4,7 +4,6 @@ import org.junit.jupiter.api.*;
 
 import java.util.List;
 
-import static com.codeborne.selenide.Selenide.open;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.netology.authorization.data.DataHelper.*;
@@ -29,7 +28,6 @@ public class AuthorizationTest {
 
     @BeforeEach
     void start() {
-        open("http://localhost:9999");
         getRegisteredUser();
         token = getVerificationCode();
         cardsNumbers = getCardNumbers();
